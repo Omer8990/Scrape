@@ -2,3 +2,4 @@
 logs
 spark-data
 .env
+*__pycache__
