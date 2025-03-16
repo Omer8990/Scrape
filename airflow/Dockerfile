@@ -14,7 +14,10 @@ RUN apt-get update && \
 
 # Create directories with proper ownership
 RUN mkdir -p /opt/airflow/jars /opt/airflow/spark_scripts
-
+# Download PostgreSQL JDBC driver
+RUN mkdir -p /opt/airflow/jars/ && \
+    curl -L https://jdbc.postgresql.org/download/postgresql-42.3.1.jar -o /opt/airflow/jars/postgresql-42.3.1.jar && \
+    chmod 644 /opt/airflow/jars/postgresql-42.3.1.jar
 # Download PostgreSQL JDBC driver using curl (which we installed above)
 RUN curl -L https://jdbc.postgresql.org/download/postgresql-42.3.1.jar -o /opt/airflow/jars/postgresql-42.3.1.jar
 
@@ -27,3 +30,6 @@ RUN pip install --no-cache-dir -r /requirements.txt
 # Set JAVA_HOME
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-arm64
 ENV PATH=$JAVA_HOME/bin:$PATH
+
+# Adding the spark-submit thingi
+RUN export PATH=$PATH:/opt/spark/bin

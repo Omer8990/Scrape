@@ -52,24 +52,33 @@ transform_news_articles = SparkSubmitOperator(
     conn_id='spark_default',
     application_args=['news_articles'],
     name='transform_news_articles_job',
+
     executor_cores=2,
     executor_memory='2g',
     num_executors=2,
-    conf={"spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64"},
+    conf={
+        "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
+        "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
+    },
+    driver_class_path='/opt/airflow/jars/postgresql-42.3.1.jar',  # Changed path
     dag=dag,
 )
 
 # Transform reddit posts
 transform_reddit_posts = SparkSubmitOperator(
     task_id='transform_reddit_posts',
-    application='/opt/spark/work-dir/news_transformations.py',  # Remove "spark_scripts/" from path
+    application='/opt/spark/work-dir/news_transformations.py',
     conn_id='spark_default',
     application_args=['reddit_posts'],
     name='transform_reddit_posts_job',
     executor_cores=2,
     executor_memory='2g',
     num_executors=2,
-    conf={"spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64"},
+    conf={
+        "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
+        "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
+    },
+    driver_class_path='/opt/airflow/jars/postgresql-42.3.1.jar',  # Changed path
     dag=dag,
 )
 
@@ -83,7 +92,11 @@ transform_scholarly_articles = SparkSubmitOperator(
     executor_cores=2,
     executor_memory='2g',
     num_executors=2,
-    conf={"spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64"},
+    conf={
+        "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
+        "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
+    },
+    driver_class_path='/opt/airflow/jars/postgresql-42.3.1.jar',  # Changed path
     dag=dag,
 )
 
@@ -97,7 +110,11 @@ merge_transformed_data = SparkSubmitOperator(
     executor_cores=2,
     executor_memory='2g',
     num_executors=2,
-    conf={"spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64"},
+    conf={
+        "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
+        "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
+    },
+    driver_class_path='/opt/airflow/jars/postgresql-42.3.1.jar',  # Changed path
     dag=dag,
 )
 

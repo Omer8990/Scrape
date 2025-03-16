@@ -5,10 +5,10 @@ This script performs transformations on extracted news data.
 """
 import sys
 from pyspark.sql import SparkSession
-from pyspark.sql.connect.functions import lit
+from pyspark.sql.functions import lit
 from pyspark.sql.functions import col, to_date, to_timestamp, regexp_replace, lower, trim
 from pyspark.sql.functions import udf, explode, split, length, when, current_timestamp
-from pyspark.sql.types import StringType, ArrayType, IntegerType, size
+from pyspark.sql.types import StringType, ArrayType, IntegerType, FloatType, size
 import pyspark.sql.functions as F
 import re
 import nltk
@@ -16,24 +16,22 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("NewsDataTransformation") \
-    .config("spark.jars", "/opt/airflow/jars/postgresql-42.3.1.jar") \
-    .getOrCreate()
-
 # Download NLTK resources
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('vader_lexicon')
 
-# Database connection properties
-jdbc_url = "jdbc:postgresql://postgres:5432/airflow"
-connection_properties = {
-    "user": "airflow",
-    "password": "airflow",
-    "driver": "org.postgresql.Driver"
-}
+# Initialize these objects once at the driver level
+stop_words = set(stopwords.words('english'))
+sia = SentimentIntensityAnalyzer()
+
+
+# Broadcast variables to workers
+def initialize_broadcast_vars(spark):
+    # Create broadcast variables for the stop words (can be accessed across the cluster)
+    return {
+        "stop_words": spark.sparkContext.broadcast(list(stop_words))
+    }
 
 
 # Define UDFs (User Defined Functions)
@@ -47,32 +45,49 @@ def clean_text(text):
     return text
 
 
+# Create Spark Session with appropriate configs
+spark = SparkSession.builder \
+    .appName("NewsDataTransformation") \
+    .config("spark.jars", "/opt/airflow/jars/postgresql-42.3.1.jar") \
+    .config("spark.network.timeout", "600s") \
+    .config("spark.executor.heartbeatInterval", "60s") \
+    .getOrCreate()
+
+# Broadcast variables
+bc_vars = initialize_broadcast_vars(spark)
+
+# Database connection properties
+jdbc_url = "jdbc:postgresql://postgres:5432/airflow"
+connection_properties = {
+    "user": "airflow",
+    "password": "airflow",
+    "driver": "org.postgresql.Driver"
+}
+
+# Register UDFs
 clean_text_udf = udf(clean_text, StringType())
 
 
+# Fixed tokenize function to use broadcast variables
 def tokenize_text(text):
     if text is None:
         return []
     tokens = word_tokenize(text)
-    stop_words = set(stopwords.words('english'))
-    filtered_tokens = [word for word in tokens if word.lower() not in stop_words and len(word) > 2]
+    # Use the broadcast stop words
+    broadcast_stop_words = bc_vars["stop_words"].value
+    filtered_tokens = [word for word in tokens if word.lower() not in broadcast_stop_words and len(word) > 2]
     return filtered_tokens
 
 
 tokenize_udf = udf(tokenize_text, ArrayType(StringType()))
 
 
-def get_sentiment(text):
-    if text is None:
-        return None
-    sia = SentimentIntensityAnalyzer()
-    sentiment = sia.polarity_scores(text)
-    return sentiment['compound']
+# Precompute sentiments on driver instead of in UDF
+def get_sentiment_scores(texts):
+    return [sia.polarity_scores(text)['compound'] if text else 0.0 for text in texts]
 
 
-sentiment_udf = udf(get_sentiment, IntegerType())
-
-
+# Transform functions
 def transform_news_articles():
     """Transform the news articles data from the database"""
     # Read data from PostgreSQL
@@ -86,18 +101,33 @@ def transform_news_articles():
     df = df.filter(col("title").isNotNull() & (length(col("title")) > 0))
     df = df.filter(col("content").isNotNull() & (length(col("content")) > 0))
 
-    # Transform data
+    # Transform data - first without sentiment
     transformed_df = df \
         .withColumn("clean_title", clean_text_udf(col("title"))) \
         .withColumn("clean_content", clean_text_udf(col("content"))) \
         .withColumn("title_tokens", tokenize_udf(col("clean_title"))) \
         .withColumn("content_tokens", tokenize_udf(col("clean_content"))) \
         .withColumn("content_length", length(col("content"))) \
-        .withColumn("sentiment_score", sentiment_udf(col("content"))) \
         .withColumn("source_normalized", lower(trim(col("source")))) \
         .withColumn("category_normalized", lower(trim(col("category")))) \
         .withColumn("published_date_normalized", to_date(col("published_date"))) \
         .withColumn("transformation_date", current_timestamp())
+
+    # Calculate sentiment on driver to avoid serialization issues
+    content_data = [row.content for row in transformed_df.select("content").collect()]
+    sentiment_scores = get_sentiment_scores(content_data)
+
+    # Create a new DataFrame with sentiment scores
+    sentiment_df = spark.createDataFrame(
+        [(i, float(score)) for i, score in enumerate(sentiment_scores)],
+        ["row_id", "sentiment_score"]
+    )
+
+    # Add row index to the transformed DataFrame
+    transformed_df = transformed_df.withColumn("row_id", F.monotonically_increasing_id())
+
+    # Join the sentiment data back
+    transformed_df = transformed_df.join(sentiment_df, "row_id").drop("row_id")
 
     # Write transformed data back to PostgreSQL
     transformed_df.write \
@@ -123,7 +153,7 @@ def transform_reddit_posts():
     # Data validation and cleaning
     df = df.filter(col("title").isNotNull() & (length(col("title")) > 0))
 
-    # Transform data
+    # Transform data - first without sentiment
     transformed_df = df \
         .withColumn("clean_title", clean_text_udf(col("title"))) \
         .withColumn("title_tokens", tokenize_udf(col("clean_title"))) \
@@ -132,8 +162,23 @@ def transform_reddit_posts():
                     .when(col("score") > 100, "medium")
                     .otherwise("low")) \
         .withColumn("created_date", to_date(col("created_utc"))) \
-        .withColumn("sentiment_score", sentiment_udf(col("title"))) \
         .withColumn("transformation_date", current_timestamp())
+
+    # Calculate sentiment on driver to avoid serialization issues
+    title_data = [row.title for row in transformed_df.select("title").collect()]
+    sentiment_scores = get_sentiment_scores(title_data)
+
+    # Create a new DataFrame with sentiment scores
+    sentiment_df = spark.createDataFrame(
+        [(i, float(score)) for i, score in enumerate(sentiment_scores)],
+        ["row_id", "sentiment_score"]
+    )
+
+    # Add row index to the transformed DataFrame
+    transformed_df = transformed_df.withColumn("row_id", F.monotonically_increasing_id())
+
+    # Join the sentiment data back
+    transformed_df = transformed_df.join(sentiment_df, "row_id").drop("row_id")
 
     # Write transformed data back to PostgreSQL
     transformed_df.write \
@@ -160,7 +205,7 @@ def transform_scholarly_articles():
     df = df.filter(col("title").isNotNull() & (length(col("title")) > 0))
     df = df.filter(col("abstract").isNotNull())
 
-    # Transform data
+    # Transform data - first without sentiment
     transformed_df = df \
         .withColumn("clean_title", clean_text_udf(col("title"))) \
         .withColumn("clean_abstract", clean_text_udf(col("abstract"))) \
@@ -171,8 +216,23 @@ def transform_scholarly_articles():
         .withColumn("source_normalized", lower(trim(col("source")))) \
         .withColumn("category_normalized", lower(trim(col("category")))) \
         .withColumn("published_date_normalized", to_date(col("published_date"))) \
-        .withColumn("sentiment_score", sentiment_udf(col("abstract"))) \
         .withColumn("transformation_date", current_timestamp())
+
+    # Calculate sentiment on driver to avoid serialization issues
+    abstract_data = [row.abstract for row in transformed_df.select("abstract").collect()]
+    sentiment_scores = get_sentiment_scores(abstract_data)
+
+    # Create a new DataFrame with sentiment scores
+    sentiment_df = spark.createDataFrame(
+        [(i, float(score)) for i, score in enumerate(sentiment_scores)],
+        ["row_id", "sentiment_score"]
+    )
+
+    # Add row index to the transformed DataFrame
+    transformed_df = transformed_df.withColumn("row_id", F.monotonically_increasing_id())
+
+    # Join the sentiment data back
+    transformed_df = transformed_df.join(sentiment_df, "row_id").drop("row_id")
 
     # Write transformed data back to PostgreSQL
     transformed_df.write \
