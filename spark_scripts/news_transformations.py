@@ -6,15 +6,15 @@
 import sys
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, to_date, length, lower, trim, when, current_timestamp, concat
-from pyspark.sql.functions import udf, regexp_replace, split, size, lit, monotonically_increasing_id
+# from pyspark.sql.functions import col, to_date, length, lower, trim, when, current_timestamp, concat
+from pyspark.sql.functions import udf, regexp_replace, split, size, lit, monotonically_increasing_id, concat
 from pyspark.sql.types import StringType, ArrayType
 import re
 # spark_scripts/news_transformations.py
-"""
-News data transformation script using PySpark.
-This script performs transformations on extracted news data.
-"""
+# """
+# News data transformation script using PySpark.
+# This script performs transformations on extracted news data.
+# """
 # import sys
 #
 # from pyspark.sql import SparkSession
@@ -26,16 +26,12 @@ This script performs transformations on extracted news data.
 # # Create Spark Session with appropriate configs
 # spark = SparkSession.builder \
 #     .appName("NewsDataTransformation") \
-#     .master("local[*]") \
+#     .master("local[1]") \
 #     .config("spark.jars", "/opt/airflow/jars/postgresql-42.3.1.jar") \
-#     .config("spark.network.timeout", "600s") \
-#     .config("spark.executor.heartbeatInterval", "60s") \
-#     .config("spark.dynamicAllocation.enabled", "false") \
-#     .config("spark.executor.memory", "1g") \
-#     .config("spark.driver.memory", "1g") \
-#     .config("spark.executor.cores", "1") \
-#     .config("spark.driver.cores", "1") \
+#     .config("spark.executor.memory", "2g") \
+#     .config("spark.driver.memory", "2g") \
 #     .getOrCreate()
+#
 #
 # # Database connection properties
 # jdbc_url = "jdbc:postgresql://postgres:5432/airflow"

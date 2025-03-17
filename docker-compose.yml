@@ -124,6 +124,23 @@ services:
       - ./spark_scripts:/opt/spark/work-dir
 #      - ./spark-jars:/opt/spark/jars  # This line is causing spark to not go up for some reason.
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"
+#
+#  spark-worker:
+#    image: apache/spark:latest
+#    depends_on:
+#      - spark
+#    ports:
+#      - "8081:8081"
+#    volumes:
+#      - ./spark-data:/opt/spark/data
+#      - ./spark-apps:/opt/spark/work-dir
+#      - ./spark_scripts:/opt/spark/work-dir
+##      - ./spark-jars:/opt/spark/jars
+#    environment:
+#      - SPARK_MASTER=spark://spark:7077
+#      - SPARK_WORKER_CORES=1
+#      - SPARK_WORKER_MEMORY=1G
+#    command: "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark:7077"
 
 volumes:
   spark-apps:
