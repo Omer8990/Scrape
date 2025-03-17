@@ -53,13 +53,11 @@ transform_news_articles = SparkSubmitOperator(
     application_args=['news_articles'],
     name='transform_news_articles_job',
 
-    # executor_cores=1,
-    # executor_memory='1g',
-    # num_executors=1,
     conf={
+        'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '512m',
-        'spark.driver.memory': '512m',
+        'spark.executor.memory': '1g',
+        'spark.driver.memory': '1g',
         'spark.executor.cores': '1',
         'spark.driver.cores': '1',
 
@@ -77,13 +75,12 @@ transform_reddit_posts = SparkSubmitOperator(
     conn_id='spark_default',
     application_args=['reddit_posts'],
     name='transform_reddit_posts_job',
-    # executor_cores=1,
-    # executor_memory='1g',
-    # num_executors=1,
+
     conf={
+        'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '512m',
-        'spark.driver.memory': '512m',
+        'spark.executor.memory': '1g',
+        'spark.driver.memory': '1g',
         'spark.executor.cores': '1',
         'spark.driver.cores': '1',
 
@@ -102,9 +99,10 @@ transform_scholarly_articles = SparkSubmitOperator(
     application_args=['scholarly_articles'],
     name='transform_scholarly_articles_job',
     conf={
+        'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '512m',
-        'spark.driver.memory': '512m',
+        'spark.executor.memory': '1g',
+        'spark.driver.memory': '1g',
         'spark.executor.cores': '1',
         'spark.driver.cores': '1',
 
@@ -122,13 +120,12 @@ merge_transformed_data = SparkSubmitOperator(
     conn_id='spark_default',
     application_args=['merge_all'],
     name='merge_transformed_data_job',
-    # executor_cores=1,
-    # executor_memory='1g',
-    # num_executors=1,
+
     conf={
+        'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '512m',
-        'spark.driver.memory': '512m',
+        'spark.executor.memory': '1g',
+        'spark.driver.memory': '1g',
         'spark.executor.cores': '1',
         'spark.driver.cores': '1',
         "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
