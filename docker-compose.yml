@@ -106,7 +106,7 @@ services:
       - ./airflow/jars:/opt/airflow/jars
       - ./airflow/jars:/opt/spark/jars
       - ./spark-jars:/opt/spark/jars
-
+      - ./spark_scripts:/opt/spark/work-dir
 
     command: celery worker
     depends_on:
@@ -120,7 +120,8 @@ services:
       - "7077:7077"
     volumes:
       - ./spark-data:/opt/spark/data
-      - spark-apps:/opt/spark/work-dir
+      - ./spark-apps:/opt/spark/work-dir
+      - ./spark_scripts:/opt/spark/work-dir
 #      - ./spark-jars:/opt/spark/jars  # This line is causing spark to not go up for some reason.
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"
 
