@@ -28,15 +28,6 @@ dag = DAG(
     catchup=False,
 )
 
-# Wait for the extract DAG to complete
-# wait_for_extract = ExternalTaskSensor(
-#     task_id='wait_for_extract',
-#     external_dag_id='extract_news_data_v2',
-#     external_task_id=None,  # Wait for the entire DAG to complete
-#     timeout=600,
-#     poke_interval=60,
-#     dag=dag,
-# )
 
 create_transform_tables = PostgresOperator(
     task_id='create_transform_tables',
@@ -48,7 +39,7 @@ create_transform_tables = PostgresOperator(
 # Transform news articles
 transform_news_articles = SparkSubmitOperator(
     task_id='transform_news_articles',
-    application='/opt/spark/work-dir/news_transformations.py',  # Remove "spark_scripts/" from path
+    application='/opt/spark/work-dir/news_transformations.py',
     conn_id='spark_default',
     application_args=['news_articles'],
     name='transform_news_articles_job',
@@ -56,11 +47,8 @@ transform_news_articles = SparkSubmitOperator(
     conf={
         'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '1g',
-        'spark.driver.memory': '1g',
-        'spark.executor.cores': '1',
-        'spark.driver.cores': '1',
-
+        'spark.executor.memory': '2g',
+        'spark.driver.memory': '2g',
         "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
         "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
     },
@@ -79,10 +67,10 @@ transform_reddit_posts = SparkSubmitOperator(
     conf={
         'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '1g',
-        'spark.driver.memory': '1g',
-        'spark.executor.cores': '1',
-        'spark.driver.cores': '1',
+        'spark.executor.memory': '2g',
+        'spark.driver.memory': '2g',
+        # 'spark.executor.cores': '1',
+        # 'spark.driver.cores': '1',
 
         "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
         "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
@@ -101,10 +89,10 @@ transform_scholarly_articles = SparkSubmitOperator(
     conf={
         'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '1g',
-        'spark.driver.memory': '1g',
-        'spark.executor.cores': '1',
-        'spark.driver.cores': '1',
+        'spark.executor.memory': '2g',
+        'spark.driver.memory': '2g',
+        # 'spark.executor.cores': '1',
+        # 'spark.driver.cores': '1',
 
         "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
         "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
@@ -124,10 +112,10 @@ merge_transformed_data = SparkSubmitOperator(
     conf={
         'spark.master': 'local[*]',
         'spark.dynamicAllocation.enabled': 'false',
-        'spark.executor.memory': '1g',
-        'spark.driver.memory': '1g',
-        'spark.executor.cores': '1',
-        'spark.driver.cores': '1',
+        'spark.executor.memory': '2g',
+        'spark.driver.memory': '2g',
+        # 'spark.executor.cores': '1',
+        # 'spark.driver.cores': '1',
         "spark.env.JAVA_HOME": "/usr/lib/jvm/java-11-openjdk-arm64",
         "spark.jars": "/opt/airflow/jars/postgresql-42.3.1.jar"  # Changed path
     },

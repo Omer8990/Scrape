@@ -52,6 +52,10 @@ services:
       - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
+
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -78,6 +82,10 @@ services:
       - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
+
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -98,6 +106,9 @@ services:
       - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-arm64
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -124,6 +135,23 @@ services:
       - ./spark_scripts:/opt/spark/work-dir
 #      - ./spark-jars:/opt/spark/jars  # This line is causing spark to not go up for some reason.
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"
+#
+#  spark-worker:
+#    image: apache/spark:latest
+#    depends_on:
+#      - spark
+#    ports:
+#      - "8081:8081"
+#    volumes:
+#      - ./spark-data:/opt/spark/data
+#      - ./spark-apps:/opt/spark/work-dir
+#      - ./spark_scripts:/opt/spark/work-dir
+##      - ./spark-jars:/opt/spark/jars
+#    environment:
+#      - SPARK_MASTER=spark://spark:7077
+#      - SPARK_WORKER_CORES=1
+#      - SPARK_WORKER_MEMORY=1G
+#    command: "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark:7077"
 
 volumes:
   spark-apps:
